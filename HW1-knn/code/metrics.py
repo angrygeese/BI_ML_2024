@@ -58,9 +58,9 @@ def r_squared(y_pred, y_true):
     """
 
     y_mean = np.mean(y_true)
-    sst = np.sum((y_true - y_mean) ** 2)
-    sse = np.sum((y_true - y_pred) ** 2)
-    r2 = 1 - (sse / sst)
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - y_mean) ** 2)
+    r2 = 1 - (ss_res / ss_tot)
 
     return r2
 
