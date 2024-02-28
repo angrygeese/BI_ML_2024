@@ -3,11 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from IPython.display import display
+
 
 pd.options.display.float_format = '{:,.2f}'.format
 
 
-def run_eda(df: pd.DataFrame, factor_thershold: int = 35):
+def run_eda(df: pd.DataFrame, factor_thershold: int=35, do_na_count=True):
 
     print('Hi there, fellow researcher.', end='\n\n')
 
@@ -31,54 +33,76 @@ def run_eda(df: pd.DataFrame, factor_thershold: int = 35):
     fig, axes = plt.subplots(nrows=2, ncols=len(data_types['number']), figsize=(24, 6), dpi=300)
 
     print('1) Basic statistics for factor-type variables.', end='\n\n')
-    for column in data_types['factor']:
-        col = df[column]
-        col_value_counts = col.value_counts()
-        col_frequencies = col_value_counts / col.size * 100
-        print(f'For variable "{column}:\n- Counts:\n{col_value_counts.to_string()}\n- Frequencies:\n{col_frequencies.to_string()}%', end='\n\n')
+    if data_types['factor']:
+        for column in data_types['factor']:
+            col = df[column]
+            col_value_counts = col.value_counts()
+            col_frequencies = col_value_counts / col.size * 100
+            print(f'For variable "{column}:\n- Counts:\n{col_value_counts.to_string()}\n- Frequencies:\n{col_frequencies.to_string()}%', end='\n\n')
+    else:
+        print('No factor-type variables.', end='\n\n')
 
-    print('2) Basic statistics for number-type variables.')
-    col_outliers = {}
+    print('2) Basic statistics for numeric variables.')
+    
+    num_stats = df[data_types['number']].describe()
+    col_outliers = []
+
     for pos, column in enumerate(data_types['number']):
         col = df[column]
-        stats = dict(zip(['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max'], ['- Counts', '- Mean', '- Standart deviation', '- Minimum', '- 25% quartile', '- Median', '- 75% quartile', '- Maximum']))
-        col_desc_stats = col.describe().rename(index = stats)
-        print(col_desc_stats['- Mean':'- Maximum'].to_frame(), end='\n\n')
-        col_IQR = col_desc_stats.at['- 75% quartile'] - col_desc_stats.at['- 25% quartile']
-        col_outlier = col[(col < col_desc_stats['- Mean'] - 1.5 * col_IQR) | (col > col_desc_stats['- Mean'] + 1.5 * col_IQR)].size
-        if col_outlier:
-            col_outliers[column] = col_outlier
+        col_mean, col_IQR = num_stats.at['mean', column], num_stats.at['75%', column] - num_stats.at['25%', column]
+        col_outliers.append(col[(col < col_mean - 1.5 * col_IQR) | (col > col_mean + 1.5 * col_IQR)].size)
         sns.boxplot(x=col, ax=axes[0, pos])
         sns.histplot(col, bins='fd', ax=axes[1, pos])
+        
+    num_stats.loc['outliers'] = col_outliers
 
-    if col_outliers:
-        print('Outliers:')
-        for var, n_outliers in col_outliers.items():
-            print(f'- Variable "{var}": {n_outliers}')
-        print()
+    display(num_stats)
+    
+    # col_outliers = {}
+    # for pos, column in enumerate(data_types['number']):
+    #     col = df[column]
+    #     stats = dict(zip(['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max'], ['- Counts', '- Mean', '- Standart deviation', '- Minimum', '- 25% quartile', '- Median', '- 75% quartile', '- Maximum']))
+    #     col_desc_stats = col.describe().rename(index = stats)
+    #     print(col_desc_stats['- Mean':'- Maximum'].to_frame(), end='\n\n')
+    #     col_IQR = col_desc_stats.at['- 75% quartile'] - col_desc_stats.at['- 25% quartile']
+    #     col_outlier = col[(col < col_desc_stats['- Mean'] - 1.5 * col_IQR) | (col > col_desc_stats['- Mean'] + 1.5 * col_IQR)].size
+    #     if col_outlier:
+    #         col_outliers[column] = col_outlier
+    #     sns.boxplot(x=col, ax=axes[0, pos])
+    #     sns.histplot(col, bins='fd', ax=axes[1, pos])
 
+    # if col_outliers:
+    #     print('Outliers:')
+    #     for var, n_outliers in col_outliers.items():
+    #         print(f'- Variable "{var}": {n_outliers}')
+    #     print()
+
+    print('Numeric variables visualization:', end='\n')
+    
     plt.show()
 
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4), dpi=300)
+    if do_na_count:
+        
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4), dpi=300)
 
-    df_na = df.isna()
-    na_count = df_na.sum().sum()
-    na_var_count = dict(zip(df.columns, df_na.sum(axis=0)))
-    na_rows = df_na.any(axis=1).sum()
-    na_columns = df.columns[df_na.any(axis=0)]
-    print('3) NA values:')
-    print(f'- Total NA count is {na_count} in {na_rows} rows.\n- Following columns contain NA: {*na_columns, }', end='\n\n')
-    sns.barplot(pd.DataFrame(na_var_count, index=['NA_count'], columns=pd.Series(df.columns, name='Variables')), ax=axes[0])
-    axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45)
-    axes[0].set_title("NA count")
-    None
+        df_na = df.isna()
+        na_count = df_na.sum().sum()
+        na_var_count = dict(zip(df.columns, df_na.sum(axis=0)))
+        na_rows = df_na.any(axis=1).sum()
+        na_columns = df.columns[df_na.any(axis=0)]
+        print('3) NA values:')
+        print(f'- Total NA count is {na_count} in {na_rows} rows.\n- Following columns contain NA: {*na_columns, }', end='\n\n')
+        sns.barplot(pd.DataFrame(na_var_count, index=['NA_count'], columns=pd.Series(df.columns, name='Variables')), ax=axes[0])
+        axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45)
+        axes[0].set_title("NA count")
+        None
 
-    duplicates_count = df.duplicated().sum()
-    print(f'Dataframe contains {duplicates_count} duplicates.')
+        duplicates_count = df.duplicated().sum()
+        print(f'Dataframe contains {duplicates_count} duplicates.')
 
 
-    sns.heatmap(df[data_types['number']].corr(), cmap='mako', ax=axes[1])
-    axes[1].set_title("Correlation matrix for numerical variables")
-    None
+        sns.heatmap(df[data_types['number']].corr(), cmap='mako', ax=axes[1])
+        axes[1].set_title("Correlation matrix for numerical variables")
+        None
 
-    plt.show()
+        plt.show()
