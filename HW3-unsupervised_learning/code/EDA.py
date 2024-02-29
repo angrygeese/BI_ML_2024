@@ -54,7 +54,7 @@ def run_eda(df: pd.DataFrame, factor_thershold: int=35, do_na_count=True):
         sns.boxplot(x=col, ax=axes[0, pos])
         sns.histplot(col, bins='fd', ax=axes[1, pos])
         
-    num_stats.loc['outliers'] = col_outliers
+    num_stats.loc['n_outliers'] = col_outliers
 
     display(num_stats)
     
