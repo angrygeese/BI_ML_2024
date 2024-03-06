@@ -45,16 +45,18 @@ def run_eda(df: pd.DataFrame, factor_thershold: int=35, do_na_count=True):
     print('2) Basic statistics for numeric variables.')
     
     num_stats = df[data_types['number']].describe()
-    col_outliers = []
+    col_outliers, col_n_unique = [], []
 
     for pos, column in enumerate(data_types['number']):
         col = df[column]
         col_mean, col_IQR = num_stats.at['mean', column], num_stats.at['75%', column] - num_stats.at['25%', column]
         col_outliers.append(col[(col < col_mean - 1.5 * col_IQR) | (col > col_mean + 1.5 * col_IQR)].size)
+        col_n_unique.append(col.nunique())
         sns.boxplot(x=col, ax=axes[0, pos])
         sns.histplot(col, bins='fd', ax=axes[1, pos])
         
     num_stats.loc['n_outliers'] = col_outliers
+    num_stats.loc['n_unique'] = col_n_unique
 
     display(num_stats)
 
@@ -74,7 +76,7 @@ def run_eda(df: pd.DataFrame, factor_thershold: int=35, do_na_count=True):
         print('3) NA values:')
         print(f'- Total NA count is {na_count} in {na_rows} rows.\n- Following columns contain NA: {*na_columns, }', end='\n\n')
         sns.barplot(pd.DataFrame(na_var_count, index=['NA_count'], columns=pd.Series(df.columns, name='Variables')), ax=axes[0])
-        axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45)
+        axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=90)
         axes[0].set_title("NA count")
         None
 
